@@ -20,12 +20,10 @@ import com.estimote.sdk.MacAddress;
 import com.estimote.sdk.Region;
 import com.estimote.sdk.Utils;
 
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -50,6 +48,11 @@ public class MainActivity extends AppCompatActivity {
     EditText sendDataEditText;
     EditText ipAddressEditText;
 
+    boolean isOnFire = false;
+    boolean isExtinguished = false;
+
+    boolean isActivated = false;
+
     ProgressDialog pDialog;
 
     Socket client = null;
@@ -57,7 +60,8 @@ public class MainActivity extends AppCompatActivity {
     String ipAddressString;
     Byte dataByte;
 
-    Button sendData;
+    Button activateButton;
+    Button disableButton;
 
     int port = 15000;
 
@@ -87,7 +91,12 @@ public class MainActivity extends AppCompatActivity {
         // set TextViews
         appId = (TextView) findViewById(R.id.appIdString);
         appToken = (TextView) findViewById(R.id.appTokenString);
-        sendData = (Button) findViewById(R.id.sendDataButton);
+
+        activateButton = (Button) findViewById(R.id.activateButton);
+        disableButton = (Button) findViewById(R.id.disactivateButton);
+
+        disableButton.setVisibility(View.INVISIBLE);
+
         sendDataEditText = (EditText) findViewById(R.id.sendDataEditText);
         ipAddressEditText = (EditText) findViewById(R.id.ipEditText);
 
@@ -122,8 +131,7 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        for (Beacon rangedBeacon : rangedBeacons)
-                        {
+                        for (Beacon rangedBeacon : rangedBeacons) {
                             updateDistanceView(rangedBeacon);
                         }
 
@@ -137,20 +145,41 @@ public class MainActivity extends AppCompatActivity {
         appId.setText(EstimoteSDK.getAppId());
         appToken.setText(EstimoteSDK.getAppToken());
 
-        sendData.setOnClickListener(new View.OnClickListener() {
+
+        activateButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
 
                 ipAddressString = ipAddressEditText.getText().toString();
-                if (sendDataEditText.getText().toString().getBytes().length >= 1) {
-                    dataByte = sendDataEditText.getText().toString().getBytes()[0];
-                    new sendDataUnity().execute();
-                } else {
-                    Toast.makeText(getApplicationContext(), "No data entered.", Toast.LENGTH_SHORT).show();
+
+                if (ipAddressEditText.getText().toString().isEmpty())
+                {
+                    Toast.makeText(getApplicationContext(), "No entered information for IP address.",
+                            Toast.LENGTH_SHORT).show();
+                }
+                else
+                {
+                    isActivated = true;
+                    activateButton.setVisibility(View.INVISIBLE);
+                    disableButton.setVisibility(View.VISIBLE);
                 }
 
             }
         });
+
+        disableButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v)
+            {
+
+                isActivated = false;
+
+                activateButton.setVisibility(View.VISIBLE);
+                disableButton.setVisibility(View.INVISIBLE);
+
+                }
+        });
+
 
 
     }
@@ -158,21 +187,51 @@ public class MainActivity extends AppCompatActivity {
     private void updateDistanceView(Beacon foundBeacon) {
 
         // fireBeacon
-
         if (foundBeacon.getMajor() == fireBeacon.getMajor()
                 && foundBeacon.getMinor() == fireBeacon.getMinor())
         {
-            fireTextView.setText(String.valueOf(computeDotPosY(foundBeacon)) + " m.");
+            double fireDistance =  computeDotPosY(foundBeacon);
+            fireTextView.setText(String.valueOf(fireDistance) + " m.");
             fireMinor.setText(String.valueOf(foundBeacon.getMinor()));
+
+            // do the logic stuff
+            if (fireDistance < 0.50)
+            {
+                isOnFire = true;
+                if (isActivated)
+                {
+                    new sendDataUnity().execute();
+                }
+            }
+            else
+            {
+                isOnFire = false;
+            }
+
         }
 
         // extunguishBeacon
-
         if (foundBeacon.getMajor() == extinguishBeacon.getMajor()
                 && foundBeacon.getMinor() == extinguishBeacon.getMinor())
         {
-            extinguishTextView.setText(String.valueOf(computeDotPosY(foundBeacon)) + " m.");
+            double extinguishDistance = computeDotPosY(foundBeacon);
+            extinguishTextView.setText(String.valueOf(extinguishDistance) + " m.");
             extMinor.setText(String.valueOf(foundBeacon.getMinor()));
+
+            // do the logic stuff
+            if (extinguishDistance < 0.50)
+            {
+                isExtinguished = true;
+                if (isActivated)
+                {
+                    new sendDataUnity().execute();
+                }
+            }
+            else
+            {
+                isExtinguished = false;
+            }
+
         }
 
     }
@@ -201,19 +260,27 @@ public class MainActivity extends AppCompatActivity {
         protected String doInBackground(String... args) {
 
             try {
-                Log.d("sendData", "Connecting to " + ipAddressString +
+                Log.d("activateButton", "Connecting to " + ipAddressString +
                         " on port " + port);
                 if (client == null) {
                     client = new Socket(ipAddressString, port);
                 }
-                Log.d("sendData", "Just connected to "
+                Log.d("activateButton", "Just connected to "
                         + client.getRemoteSocketAddress());
                 OutputStream outToServer = client.getOutputStream();
                 DataOutputStream out = new DataOutputStream(outToServer);
+                if (isOnFire)
+                {
+                    dataByte = 102;
+                }
+                else if (isExtinguished)
+                {
+                    dataByte = 101;
+                }
                 out.write(dataByte);
                 client.close();
             } catch (IOException e) {
-                Log.d("sendData", e.getStackTrace().toString());
+                Log.d("activateButton", e.getStackTrace().toString());
             }
 
             return null;
