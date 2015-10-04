@@ -1,5 +1,7 @@
 package adriantodorov.estimotetounityapi;
 
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -71,6 +73,13 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // RGB of the Galactic Logo:
+        // 255, 113, 139
+
+        // change the ActionBar Color
+        android.support.v7.app.ActionBar actionBar = getSupportActionBar();
+        actionBar.setBackgroundDrawable(new ColorDrawable(Color.rgb(255, 113, 139)));
 
         // both estimotes have the same UUID
         region = new Region(
@@ -290,8 +299,8 @@ public class MainActivity extends AppCompatActivity {
                 dataSent = false;
                 runOnUiThread(new Runnable() {
                     public void run() {
-                        Toast.makeText(getApplicationContext(), "Unable to connect to port 15,001, " +
-                                "are you sure the Desktop game is working ?", Toast.LENGTH_LONG);
+                        Toast.makeText(getApplicationContext(), "Unable to connect to server on the specific IP and port, " +
+                                "are you sure the Unity game is running ?", Toast.LENGTH_LONG);
                     }
                 });
             }
