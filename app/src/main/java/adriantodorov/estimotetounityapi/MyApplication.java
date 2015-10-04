@@ -16,12 +16,13 @@ import java.util.UUID;
 
 public class MyApplication extends Application {
 
-    private BeaconManager beaconManager;
+    //private BeaconManager beaconManager;
 
     @Override
     public void onCreate() {
         super.onCreate();
-        beaconManager = new BeaconManager(getApplicationContext());
+
+        // beaconManager = new BeaconManager(getApplicationContext());
 
         /*
         beaconManager.setMonitoringListener(new BeaconManager.MonitoringListener() {
@@ -38,7 +39,9 @@ public class MyApplication extends Application {
         });
         */
 
+
         // add this below:
+        /*
         beaconManager.connect(new BeaconManager.ServiceReadyCallback() {
             // beacon #1 (F8:63:81:24:61:34)
             @Override
@@ -49,6 +52,7 @@ public class MyApplication extends Application {
                         24884, 33060));
             }
         });
+        */
 
     } // end onCreate
 
