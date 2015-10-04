@@ -42,10 +42,10 @@ public class MainActivity extends AppCompatActivity {
     TextView fireTextView;
     TextView extinguishTextView;
 
-    String tag = "AndroidLifecycle";
+    TextView fireMinor;
+    TextView extMinor;
 
-    private int startY = -1;
-    private int segmentLength = -1;
+    String tag = "AndroidLifecycle";
 
     EditText sendDataEditText;
     EditText ipAddressEditText;
@@ -72,26 +72,35 @@ public class MainActivity extends AppCompatActivity {
 
     private Region region;
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // both estimotes have the same UUID
+        region = new Region(
+                "monitored region",
+                UUID.fromString("b9407f30-f5f8-466e-aff9-25556b57fe6d"), null, null);
+
 
         // set TextViews
-
         appId = (TextView) findViewById(R.id.appIdString);
         appToken = (TextView) findViewById(R.id.appTokenString);
         sendData = (Button) findViewById(R.id.sendDataButton);
         sendDataEditText = (EditText) findViewById(R.id.sendDataEditText);
         ipAddressEditText = (EditText) findViewById(R.id.ipEditText);
+
         fireTextView = (TextView) findViewById(R.id.distanceFire);
         extinguishTextView = (TextView) findViewById(R.id.distanceExtinguish);
+
+        fireMinor = (TextView) findViewById(R.id.minorFire);
+        extMinor = (TextView) findViewById(R.id.minorExting);
 
         //  App ID & App Token can be taken from App section of Estimote Cloud.
         EstimoteSDK.initialize(getApplicationContext(), "wearhacks-2015-montreal-3mt", "e9cd76b118e99e34a719dc0ca2a1ea50");
         // Optional, debug logging.
-        EstimoteSDK.enableDebugLogging(true);
+        EstimoteSDK.enableDebugLogging(false);
 
         UUID fireBeaconID = UUID.fromString("b9407f30-f5f8-466e-aff9-25556b57fe6d");
         MacAddress fireBeaconMacAddress = MacAddress.fromString("E6:1E:96:6B:E2:0C");
@@ -105,8 +114,6 @@ public class MainActivity extends AppCompatActivity {
         beaconList.add(fireBeacon);
         beaconList.add(extinguishBeacon);
 
-
-
         beaconManager = new BeaconManager(this);
         beaconManager.setRangingListener(new BeaconManager.RangingListener() {
             @Override
@@ -115,8 +122,10 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-
-
+                        for (Beacon rangedBeacon : rangedBeacons)
+                        {
+                            updateDistanceView(rangedBeacon);
+                        }
 
                     }
                 });
@@ -148,7 +157,23 @@ public class MainActivity extends AppCompatActivity {
 
     private void updateDistanceView(Beacon foundBeacon) {
 
+        // fireBeacon
 
+        if (foundBeacon.getMajor() == fireBeacon.getMajor()
+                && foundBeacon.getMinor() == fireBeacon.getMinor())
+        {
+            fireTextView.setText(String.valueOf(computeDotPosY(foundBeacon)) + " m.");
+            fireMinor.setText(String.valueOf(foundBeacon.getMinor()));
+        }
+
+        // extunguishBeacon
+
+        if (foundBeacon.getMajor() == extinguishBeacon.getMajor()
+                && foundBeacon.getMinor() == extinguishBeacon.getMinor())
+        {
+            extinguishTextView.setText(String.valueOf(computeDotPosY(foundBeacon)) + " m.");
+            extMinor.setText(String.valueOf(foundBeacon.getMinor()));
+        }
 
     }
 
@@ -238,10 +263,10 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    private int computeDotPosY(Beacon beacon) {
+    private double computeDotPosY(Beacon beacon) {
         // Let's put dot at the end of the scale when it's further than 6m.
         double distance = Math.min(Utils.computeAccuracy(beacon), 6.0);
-        return startY + (int) (segmentLength * (distance / 6.0));
+        return distance;
     }
 
 
