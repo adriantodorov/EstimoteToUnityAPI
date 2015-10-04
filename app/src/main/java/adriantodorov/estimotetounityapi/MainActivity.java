@@ -1,12 +1,9 @@
 package adriantodorov.estimotetounityapi;
 
-import android.app.ProgressDialog;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -24,7 +21,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -67,7 +63,6 @@ public class MainActivity extends AppCompatActivity {
     private Beacon fireBeacon;
     private Beacon extinguishBeacon;
 
-    private List<Beacon> beaconList;
 
     private Region region;
 
@@ -121,9 +116,6 @@ public class MainActivity extends AppCompatActivity {
         MacAddress extinguishMacAddress = MacAddress.fromString("F8:63:81:24:61:34");
         extinguishBeacon = new Beacon (extinguishID, "extinguishBeacon", extinguishMacAddress, 24884, 33060, 0, 0);
 
-        beaconList = new ArrayList<Beacon>();
-        beaconList.add(fireBeacon);
-        beaconList.add(extinguishBeacon);
 
         beaconManager = new BeaconManager(this);
         beaconManager.setRangingListener(new BeaconManager.RangingListener() {
@@ -335,6 +327,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    /*
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
@@ -357,6 +350,8 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+    */
+
     private double computeDotPosY(Beacon beacon) {
         // Let's put dot at the end of the scale when it's further than 6m.
         double distance = Math.min(Utils.computeAccuracy(beacon), 6.0);
@@ -366,6 +361,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void onStart() {
         super.onStart();
+        // Connect Beacon Manager
         beaconManager.connect(new BeaconManager.ServiceReadyCallback() {
             @Override
             public void onServiceReady() {
@@ -391,6 +387,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onStop() {
+        // disconnect Beacon Manager
         beaconManager.disconnect();
         Log.d(tag, "In the onStop() event");
         super.onStop();
