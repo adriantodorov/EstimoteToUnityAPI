@@ -30,10 +30,6 @@ import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
 
-    // Y positions are relative to height of bg_distance image.
-    private static final double RELATIVE_START_POS = 320.0 / 1110.0;
-    private static final double RELATIVE_STOP_POS = 885.0 / 1110.0;
-
     TextView appId;
     TextView appToken;
 
@@ -47,13 +43,11 @@ public class MainActivity extends AppCompatActivity {
 
     EditText sendDataEditText;
     EditText ipAddressEditText;
+    EditText portEditText;
 
     boolean isOnFire = false;
     boolean isExtinguished = false;
-
     boolean isActivated = false;
-
-    ProgressDialog pDialog;
 
     Socket client = null;
 
@@ -63,7 +57,8 @@ public class MainActivity extends AppCompatActivity {
     Button activateButton;
     Button disableButton;
 
-    int port = 15000;
+    // non-prilivedged port for non-administrators server sockets
+    int port = 52432;
 
     boolean dataSent = false;
 
@@ -99,12 +94,19 @@ public class MainActivity extends AppCompatActivity {
 
         sendDataEditText = (EditText) findViewById(R.id.sendDataEditText);
         ipAddressEditText = (EditText) findViewById(R.id.ipEditText);
+        portEditText = (EditText) findViewById(R.id.portEditText);
 
         fireTextView = (TextView) findViewById(R.id.distanceFire);
         extinguishTextView = (TextView) findViewById(R.id.distanceExtinguish);
 
         fireMinor = (TextView) findViewById(R.id.minorFire);
         extMinor = (TextView) findViewById(R.id.minorExting);
+
+        fireTextView.setVisibility(View.INVISIBLE);
+        extinguishTextView.setVisibility(View.INVISIBLE);
+
+        fireMinor.setVisibility(View.INVISIBLE);
+        extMinor.setVisibility(View.INVISIBLE);
 
         //  App ID & App Token can be taken from App section of Estimote Cloud.
         EstimoteSDK.initialize(getApplicationContext(), "wearhacks-2015-montreal-3mt", "e9cd76b118e99e34a719dc0ca2a1ea50");
@@ -131,8 +133,11 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        for (Beacon rangedBeacon : rangedBeacons) {
+                        for (Beacon rangedBeacon : rangedBeacons)
+                        {
                             updateDistanceView(rangedBeacon);
+
+
                         }
 
                     }
@@ -151,6 +156,7 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
 
                 ipAddressString = ipAddressEditText.getText().toString();
+                port = Integer.valueOf(portEditText.getText().toString());
 
                 if (ipAddressEditText.getText().toString().isEmpty())
                 {
@@ -177,7 +183,7 @@ public class MainActivity extends AppCompatActivity {
                 activateButton.setVisibility(View.VISIBLE);
                 disableButton.setVisibility(View.INVISIBLE);
 
-                }
+            }
         });
 
 
@@ -190,12 +196,16 @@ public class MainActivity extends AppCompatActivity {
         if (foundBeacon.getMajor() == fireBeacon.getMajor()
                 && foundBeacon.getMinor() == fireBeacon.getMinor())
         {
+
+            fireTextView.setVisibility(View.VISIBLE);
+            fireMinor.setVisibility(View.VISIBLE);
+
             double fireDistance =  computeDotPosY(foundBeacon);
-            fireTextView.setText(String.valueOf(fireDistance) + " m.");
-            fireMinor.setText(String.valueOf(foundBeacon.getMinor()));
+            fireTextView.setText((String.format("%.3f", fireDistance) + " m."));
+            fireMinor.setText(": Distance from Fire Beacon");
 
             // do the logic stuff
-            if (fireDistance < 0.50)
+            if (fireDistance <= 0.50)
             {
                 isOnFire = true;
                 if (isActivated)
@@ -214,12 +224,15 @@ public class MainActivity extends AppCompatActivity {
         if (foundBeacon.getMajor() == extinguishBeacon.getMajor()
                 && foundBeacon.getMinor() == extinguishBeacon.getMinor())
         {
+            extinguishTextView.setVisibility(View.VISIBLE);
+            extMinor.setVisibility(View.VISIBLE);
+
             double extinguishDistance = computeDotPosY(foundBeacon);
-            extinguishTextView.setText(String.valueOf(extinguishDistance) + " m.");
-            extMinor.setText(String.valueOf(foundBeacon.getMinor()));
+            extinguishTextView.setText(String.format("%.3f", extinguishDistance) + " m.");
+            extMinor.setText(": Distance from Extinguish Beacon");
 
             // do the logic stuff
-            if (extinguishDistance < 0.50)
+            if (extinguishDistance <= 0.50)
             {
                 isExtinguished = true;
                 if (isActivated)
@@ -247,11 +260,6 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
-            pDialog = new ProgressDialog(MainActivity.this);
-            pDialog.setMessage("Sending data to Unity...");
-            pDialog.setIndeterminate(false);
-            pDialog.setCancelable(false);
-            pDialog.show();
         }
 
         /**
@@ -273,14 +281,27 @@ public class MainActivity extends AppCompatActivity {
                 {
                     dataByte = 102;
                 }
-                else if (isExtinguished)
+
+
+                if (isExtinguished)
                 {
                     dataByte = 101;
                 }
                 out.write(dataByte);
-                client.close();
+
+                dataSent = true;
+
+                // Don't close the client unless you disable it through the button.
+
+                // client.close();
             } catch (IOException e) {
-                Log.d("activateButton", e.getStackTrace().toString());
+                dataSent = false;
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        Toast.makeText(getApplicationContext(), "Unable to connect to port 15,001, " +
+                                "are you sure the Desktop game is working ?", Toast.LENGTH_LONG);
+                    }
+                });
             }
 
             return null;
@@ -290,14 +311,20 @@ public class MainActivity extends AppCompatActivity {
          * After completing background task Dismiss the progress dialog
          **/
         protected void onPostExecute(String file_url) {
-            // dismiss the dialog after getting all trees
-            pDialog.dismiss();
             // updating UI from Background Thread
             runOnUiThread(new Runnable() {
                 public void run() {
 
+                    // if Data is sent
                     if (dataSent) {
-                        Toast.makeText(getApplicationContext(), "Data sent.", Toast.LENGTH_SHORT).show();
+                        if (isOnFire) {
+
+                            //Toast.makeText(getApplicationContext(), "There is fire, you have 15 seconds to extinguish it!", Toast.LENGTH_SHORT).show();
+                        }
+                        if (isExtinguished) {
+
+                            //Toast.makeText(getApplicationContext(), "Good job! You extinguished it!", Toast.LENGTH_SHORT).show();
+                        }
                     }
                 }
             });
